@@ -11,8 +11,9 @@
 - 全螢幕由玩家透過標題列按鈕主動切換。
 - 標題列資訊按鈕會顯示 Player 1／Player 2 按鍵，遊戲中開啟時會自動暫停。
 - 每日免費 3 次的純核心模型已完成，包含 UTC 重置、完成才扣與時鐘回撥保護。
+- 額度狀態使用 Windows LocalState 路徑與原子 JSON 替換，損毀資料會隔離保留。
 
-每日額度尚未接上 Windows LocalState 與遊戲介面；Microsoft Store 消耗型商品、MSIX 封裝與正式商店素材亦尚未實作，現階段不會顯示或執行任何購買流程。
+每日額度尚未接上遊戲開局與賽果流程；Microsoft Store 消耗型商品、MSIX 封裝與正式商店素材亦尚未實作，現階段不會顯示或執行任何購買流程。
 
 ## 建置與執行
 
@@ -30,6 +31,7 @@ dotnet run --project src/Arcade1972.App/Arcade1972.App.csproj -c Debug -p:Platfo
 ## 專案結構
 
 - `src/Arcade1972.Core`：不依賴 Windows UI 的 deterministic 遊戲規則。
+- `src/Arcade1972.Infrastructure`：可測試的檔案持久化與平台邊界實作。
 - `src/Arcade1972.App`：WinUI 3 視窗、輸入與 XAML 畫面。
 - `tests/Arcade1972.Tests`：物理、勝負、固定步進與 AI 測試。
 - `docs/game-reference.md`：歷史規則依據與尚待量測的參數。

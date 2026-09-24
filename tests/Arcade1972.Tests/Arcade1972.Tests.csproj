@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Arcade1972.Core\Arcade1972.Core.csproj" />
+    <ProjectReference Include="..\..\src\Arcade1972.Infrastructure\Arcade1972.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
