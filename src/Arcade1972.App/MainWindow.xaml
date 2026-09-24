@@ -77,7 +77,10 @@
                 </Canvas>
             </Border>
 
-            <Grid x:Name="MenuOverlay" Background="#E6050505">
+            <Grid
+                x:Name="MenuOverlay"
+                Background="#E6050505"
+                Loaded="MenuOverlay_Loaded">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="18">
                     <TextBlock
                         x:Name="MenuHeading"
@@ -92,6 +95,23 @@
                         FontSize="14"
                         Foreground="{StaticResource GameForegroundBrush}"
                         Text="W / S        UP / DOWN" />
+                    <StackPanel Height="44" HorizontalAlignment="Center" Spacing="4">
+                        <TextBlock
+                            x:Name="QuotaStatusText"
+                            HorizontalAlignment="Center"
+                            AutomationProperties.LiveSetting="Polite"
+                            FontFamily="Consolas"
+                            FontSize="14"
+                            Foreground="{StaticResource GameForegroundBrush}"
+                            Text="FREE PLAYS  -- / --" />
+                        <TextBlock
+                            x:Name="QuotaResetText"
+                            HorizontalAlignment="Center"
+                            FontFamily="Consolas"
+                            FontSize="11"
+                            Foreground="#B8B8B8"
+                            Text="RESET  ---- -- --  00:00 UTC" />
+                    </StackPanel>
                     <Button
                         x:Name="OnePlayerButton"
                         MinWidth="180"

@@ -43,6 +43,10 @@ public sealed class DailyFreePlayQuota(
 {
     private readonly SemaphoreSlim gate = new(1, 1);
 
+    public int DailyLimit { get; } = dailyLimit > 0
+        ? dailyLimit
+        : throw new ArgumentOutOfRangeException(nameof(dailyLimit));
+
     public async ValueTask<FreePlayAvailability> GetAvailabilityAsync(
         CancellationToken cancellationToken = default)
     {
@@ -93,7 +97,7 @@ public sealed class DailyFreePlayQuota(
                 return FreePlayCompletionStatus.AlreadyConsumed;
             }
 
-            if (CountCompletedMatches(state, session.QuotaDate) >= dailyLimit)
+            if (CountCompletedMatches(state, session.QuotaDate) >= DailyLimit)
             {
                 return FreePlayCompletionStatus.QuotaExhausted;
             }
@@ -134,7 +138,7 @@ public sealed class DailyFreePlayQuota(
 
     private FreePlayAvailability GetAvailability(FreePlayQuotaState state, DateOnly quotaDate)
     {
-        var remainingPlays = Math.Max(0, dailyLimit - CountCompletedMatches(state, quotaDate));
+        var remainingPlays = Math.Max(0, DailyLimit - CountCompletedMatches(state, quotaDate));
         return new FreePlayAvailability(quotaDate, remainingPlays);
     }
 

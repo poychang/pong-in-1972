@@ -55,6 +55,7 @@ public sealed partial class MainWindow : Window
             AppWindow.TitleBar.ButtonInactiveForegroundColor = Colors.Gray;
         }
 
+        Activated += MainWindow_Activated;
         Closed += MainWindow_Closed;
     }
 
@@ -159,6 +160,7 @@ public sealed partial class MainWindow : Window
             if (!startResult.IsAllowed)
             {
                 MenuHeading.Text = "NO FREE PLAYS";
+                UpdateQuotaDisplay(startResult.Availability);
                 return;
             }
 
@@ -228,6 +230,7 @@ public sealed partial class MainWindow : Window
             if (completion == FreePlayCompletionStatus.QuotaExhausted)
             {
                 ShowMenu("FREE PLAY LIMIT REACHED", allowNewMatch: false);
+                await RefreshQuotaDisplayAsync();
                 return;
             }
 
@@ -236,6 +239,7 @@ public sealed partial class MainWindow : Window
                 ? "LEFT PLAYER WINS"
                 : "RIGHT PLAYER WINS";
             ShowMenu(heading, allowNewMatch: true);
+            await RefreshQuotaDisplayAsync();
         }
         catch (Exception)
         {
@@ -263,6 +267,41 @@ public sealed partial class MainWindow : Window
     {
         OnePlayerButton.IsEnabled = isEnabled;
         StartButton.IsEnabled = isEnabled;
+    }
+
+    private async void MenuOverlay_Loaded(object sender, RoutedEventArgs e)
+    {
+        await RefreshQuotaDisplayAsync();
+    }
+
+    private async void MainWindow_Activated(object sender, WindowActivatedEventArgs args)
+    {
+        if (args.WindowActivationState != WindowActivationState.Deactivated
+            && MenuOverlay.Visibility == Visibility.Visible)
+        {
+            await RefreshQuotaDisplayAsync();
+        }
+    }
+
+    private async Task RefreshQuotaDisplayAsync()
+    {
+        try
+        {
+            UpdateQuotaDisplay(await freePlayQuota.GetAvailabilityAsync());
+        }
+        catch (Exception)
+        {
+            QuotaStatusText.Text = $"FREE PLAYS  -- / {freePlayQuota.DailyLimit}";
+            QuotaResetText.Text = "RESET TIME UNAVAILABLE";
+        }
+    }
+
+    private void UpdateQuotaDisplay(FreePlayAvailability availability)
+    {
+        var resetDate = availability.QuotaDate.AddDays(1);
+        QuotaStatusText.Text =
+            $"FREE PLAYS  {availability.RemainingPlays} / {freePlayQuota.DailyLimit}";
+        QuotaResetText.Text = $"RESET  {resetDate:yyyy-MM-dd}  00:00 UTC";
     }
 
     private void RenderGame()
@@ -395,6 +434,7 @@ public sealed partial class MainWindow : Window
     {
         gameTimer.Stop();
         gameTimer.Tick -= GameTimer_Tick;
+        Activated -= MainWindow_Activated;
     }
 
     private void ClearInput()

@@ -7,6 +7,18 @@ public sealed class DailyFreePlayQuotaTests
     private static readonly DateTimeOffset InitialTime =
         new(2026, 9, 24, 12, 0, 0, TimeSpan.Zero);
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Constructor_RejectsNonPositiveDailyLimit(int dailyLimit)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new DailyFreePlayQuota(
+                new FakeClock(InitialTime),
+                new MemoryQuotaStore(),
+                dailyLimit));
+    }
+
     [Fact]
     public async Task Availability_StartsWithThreePlaysAndResetsAtUtcMidnight()
     {
