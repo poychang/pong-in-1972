@@ -9,15 +9,12 @@
 
 ## 進行中
 
-- [ ] 額度耗盡時停用開局並顯示購買入口占位畫面。
+- [ ] 安裝並驗證 Visual Studio Windows App SDK、MSIX Packaging 與 Windows SDK 工作負載。
 
 ## 待辦
 
-### 免費遊玩額度
-
 ### MSIX 與 Microsoft Store 前置
 
-- [ ] 安裝並驗證 Visual Studio Windows App SDK、MSIX Packaging 與 Windows SDK 工作負載。
 - [ ] 將目前 unpackaged WinUI 3 App 轉為 Packaged MSIX 專案。
 - [ ] 建立正式 Package identity、圖示、啟動畫面與 zh-TW／en-US 資源。
 - [ ] 在 Partner Center 建立 App identity，並關聯本機封裝專案。
@@ -53,6 +50,7 @@
 
 ## 已完成
 
+- [x] 額度耗盡時停用單人／雙人開局，並顯示不含假價格或假交易的 Store 占位畫面。
 - [x] 在主選單顯示今日剩餘免費次數與下一個 00:00 UTC 重置日期。
 - [x] 建立可汰舊的 `docs/dev-knowledge.md`，並將關鍵學習紀錄納入每項工作的完成檢查。
 - [x] 將免費額度接到單人與雙人開局及賽果流程；開局建立 session，完成比賽才扣除。

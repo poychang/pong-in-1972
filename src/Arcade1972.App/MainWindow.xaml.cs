@@ -109,6 +109,23 @@ public sealed partial class MainWindow : Window
         HideInformation();
     }
 
+    private void PurchaseEntryButton_Click(object sender, RoutedEventArgs e)
+    {
+        PurchasePlaceholderOverlay.Visibility = Visibility.Visible;
+        ClosePurchasePlaceholderButton.Focus(FocusState.Programmatic);
+    }
+
+    private void ClosePurchasePlaceholderButton_Click(object sender, RoutedEventArgs e)
+    {
+        HidePurchasePlaceholder();
+    }
+
+    private void HidePurchasePlaceholder()
+    {
+        PurchasePlaceholderOverlay.Visibility = Visibility.Collapsed;
+        PurchaseEntryButton.Focus(FocusState.Programmatic);
+    }
+
     private void ShowInformation()
     {
         if (InformationOverlay.Visibility == Visibility.Visible)
@@ -169,14 +186,9 @@ public sealed partial class MainWindow : Window
         catch (Exception)
         {
             MenuHeading.Text = "QUOTA UNAVAILABLE";
+            SetStartButtonsEnabled(false);
+            PurchaseEntryButton.Visibility = Visibility.Collapsed;
             return;
-        }
-        finally
-        {
-            if (activeFreePlaySession is null)
-            {
-                SetStartButtonsEnabled(true);
-            }
         }
 
         isOnePlayer = onePlayer;
@@ -293,6 +305,8 @@ public sealed partial class MainWindow : Window
         {
             QuotaStatusText.Text = $"FREE PLAYS  -- / {freePlayQuota.DailyLimit}";
             QuotaResetText.Text = "RESET TIME UNAVAILABLE";
+            SetStartButtonsEnabled(false);
+            PurchaseEntryButton.Visibility = Visibility.Collapsed;
         }
     }
 
@@ -302,6 +316,11 @@ public sealed partial class MainWindow : Window
         QuotaStatusText.Text =
             $"FREE PLAYS  {availability.RemainingPlays} / {freePlayQuota.DailyLimit}";
         QuotaResetText.Text = $"RESET  {resetDate:yyyy-MM-dd}  00:00 UTC";
+        var hasFreePlays = availability.RemainingPlays > 0;
+        SetStartButtonsEnabled(hasFreePlays);
+        PurchaseEntryButton.Visibility = hasFreePlays
+            ? Visibility.Collapsed
+            : Visibility.Visible;
     }
 
     private void RenderGame()
@@ -426,6 +445,15 @@ public sealed partial class MainWindow : Window
         if (e.Key is VirtualKey.Escape or VirtualKey.I)
         {
             HideInformation();
+            e.Handled = true;
+        }
+    }
+
+    private void PurchasePlaceholderOverlay_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Escape)
+        {
+            HidePurchasePlaceholder();
             e.Handled = true;
         }
     }
