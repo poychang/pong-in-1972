@@ -15,6 +15,7 @@ namespace Arcade1972.App;
 
 public sealed partial class MainWindow : Window
 {
+    private readonly DailyFreePlayQuota freePlayQuota;
     private readonly Classic1972Rules rules = new();
     private readonly ClassicGameSimulation simulation;
     private readonly ClassicAiController aiController;
@@ -27,9 +28,12 @@ public sealed partial class MainWindow : Window
     private bool rightDownPressed;
     private bool isOnePlayer;
     private bool resumeGameAfterInformation;
+    private bool isCompletingMatch;
+    private FreePlayMatchSession? activeFreePlaySession;
 
-    public MainWindow()
+    public MainWindow(DailyFreePlayQuota freePlayQuota)
     {
+        this.freePlayQuota = freePlayQuota;
         InitializeComponent();
 
         simulation = new ClassicGameSimulation(rules);
@@ -136,18 +140,43 @@ public sealed partial class MainWindow : Window
         resumeGameAfterInformation = false;
     }
 
-    private void StartButton_Click(object sender, RoutedEventArgs e)
+    private async void StartButton_Click(object sender, RoutedEventArgs e)
     {
-        StartMatch(onePlayer: false);
+        await TryStartMatchAsync(onePlayer: false);
     }
 
-    private void StartOnePlayerButton_Click(object sender, RoutedEventArgs e)
+    private async void StartOnePlayerButton_Click(object sender, RoutedEventArgs e)
     {
-        StartMatch(onePlayer: true);
+        await TryStartMatchAsync(onePlayer: true);
     }
 
-    private void StartMatch(bool onePlayer)
+    private async Task TryStartMatchAsync(bool onePlayer)
     {
+        SetStartButtonsEnabled(false);
+        try
+        {
+            var startResult = await freePlayQuota.TryStartMatchAsync();
+            if (!startResult.IsAllowed)
+            {
+                MenuHeading.Text = "NO FREE PLAYS";
+                return;
+            }
+
+            activeFreePlaySession = startResult.Session;
+        }
+        catch (Exception)
+        {
+            MenuHeading.Text = "QUOTA UNAVAILABLE";
+            return;
+        }
+        finally
+        {
+            if (activeFreePlaySession is null)
+            {
+                SetStartButtonsEnabled(true);
+            }
+        }
+
         isOnePlayer = onePlayer;
         aiController.Reset();
         gameLoop = new FixedStepGameLoop(simulation, simulation.CreateInitialState());
@@ -159,8 +188,13 @@ public sealed partial class MainWindow : Window
         gameTimer.Start();
     }
 
-    private void GameTimer_Tick(DispatcherQueueTimer sender, object args)
+    private async void GameTimer_Tick(DispatcherQueueTimer sender, object args)
     {
+        if (isCompletingMatch)
+        {
+            return;
+        }
+
         var elapsed = frameClock.Elapsed;
         frameClock.Restart();
 
@@ -175,13 +209,60 @@ public sealed partial class MainWindow : Window
         if (gameLoop.State.Phase == MatchPhase.Finished)
         {
             gameTimer.Stop();
-            MenuHeading.Text = gameLoop.State.Winner == PlayerSide.Left
+            ClearInput();
+            isCompletingMatch = true;
+            await CompleteFinishedMatchAsync();
+        }
+    }
+
+    private async Task CompleteFinishedMatchAsync()
+    {
+        try
+        {
+            if (activeFreePlaySession is null)
+            {
+                throw new InvalidOperationException("The finished match has no quota session.");
+            }
+
+            var completion = await freePlayQuota.CompleteMatchAsync(activeFreePlaySession);
+            if (completion == FreePlayCompletionStatus.QuotaExhausted)
+            {
+                ShowMenu("FREE PLAY LIMIT REACHED", allowNewMatch: false);
+                return;
+            }
+
+            activeFreePlaySession = null;
+            var heading = gameLoop.State.Winner == PlayerSide.Left
                 ? "LEFT PLAYER WINS"
                 : "RIGHT PLAYER WINS";
-            StartButton.Content = "PLAY AGAIN";
-            MenuOverlay.Visibility = Visibility.Visible;
+            ShowMenu(heading, allowNewMatch: true);
+        }
+        catch (Exception)
+        {
+            ShowMenu("QUOTA SAVE FAILED", allowNewMatch: false);
+        }
+        finally
+        {
+            isCompletingMatch = false;
+        }
+    }
+
+    private void ShowMenu(string heading, bool allowNewMatch)
+    {
+        MenuHeading.Text = heading;
+        StartButton.Content = "PLAY AGAIN";
+        SetStartButtonsEnabled(allowNewMatch);
+        MenuOverlay.Visibility = Visibility.Visible;
+        if (allowNewMatch)
+        {
             StartButton.Focus(FocusState.Programmatic);
         }
+    }
+
+    private void SetStartButtonsEnabled(bool isEnabled)
+    {
+        OnePlayerButton.IsEnabled = isEnabled;
+        StartButton.IsEnabled = isEnabled;
     }
 
     private void RenderGame()

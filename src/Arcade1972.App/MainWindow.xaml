@@ -93,6 +93,7 @@
                         Foreground="{StaticResource GameForegroundBrush}"
                         Text="W / S        UP / DOWN" />
                     <Button
+                        x:Name="OnePlayerButton"
                         MinWidth="180"
                         Padding="24,12"
                         HorizontalAlignment="Center"
