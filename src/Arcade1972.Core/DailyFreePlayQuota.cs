@@ -1,0 +1,145 @@
+namespace Arcade1972.Core;
+
+public interface IUtcClock
+{
+    DateTimeOffset UtcNow { get; }
+}
+
+public interface IFreePlayQuotaStore
+{
+    ValueTask<FreePlayQuotaState?> LoadAsync(CancellationToken cancellationToken = default);
+
+    ValueTask SaveAsync(
+        FreePlayQuotaState state,
+        CancellationToken cancellationToken = default);
+}
+
+public sealed record CompletedFreePlay(Guid MatchId, DateOnly QuotaDate);
+
+public sealed record FreePlayQuotaState(
+    DateOnly LastObservedUtcDate,
+    IReadOnlyList<CompletedFreePlay> CompletedMatches);
+
+public sealed record FreePlayMatchSession(Guid MatchId, DateOnly QuotaDate);
+
+public sealed record FreePlayAvailability(DateOnly QuotaDate, int RemainingPlays);
+
+public sealed record FreePlayStartResult(
+    bool IsAllowed,
+    FreePlayMatchSession? Session,
+    FreePlayAvailability Availability);
+
+public enum FreePlayCompletionStatus
+{
+    Consumed,
+    AlreadyConsumed,
+    QuotaExhausted,
+}
+
+public sealed class DailyFreePlayQuota(
+    IUtcClock clock,
+    IFreePlayQuotaStore store,
+    int dailyLimit = 3)
+{
+    private readonly SemaphoreSlim gate = new(1, 1);
+
+    public async ValueTask<FreePlayAvailability> GetAvailabilityAsync(
+        CancellationToken cancellationToken = default)
+    {
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            var state = await LoadObservedStateAsync(cancellationToken);
+            return GetAvailability(state, state.LastObservedUtcDate);
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    public async ValueTask<FreePlayStartResult> TryStartMatchAsync(
+        CancellationToken cancellationToken = default)
+    {
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            var state = await LoadObservedStateAsync(cancellationToken);
+            var availability = GetAvailability(state, state.LastObservedUtcDate);
+            if (availability.RemainingPlays == 0)
+            {
+                return new FreePlayStartResult(false, null, availability);
+            }
+
+            var session = new FreePlayMatchSession(Guid.NewGuid(), availability.QuotaDate);
+            return new FreePlayStartResult(true, session, availability);
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    public async ValueTask<FreePlayCompletionStatus> CompleteMatchAsync(
+        FreePlayMatchSession session,
+        CancellationToken cancellationToken = default)
+    {
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            var state = await LoadObservedStateAsync(cancellationToken);
+            if (state.CompletedMatches.Any(match => match.MatchId == session.MatchId))
+            {
+                return FreePlayCompletionStatus.AlreadyConsumed;
+            }
+
+            if (CountCompletedMatches(state, session.QuotaDate) >= dailyLimit)
+            {
+                return FreePlayCompletionStatus.QuotaExhausted;
+            }
+
+            var completedMatches = state.CompletedMatches
+                .Append(new CompletedFreePlay(session.MatchId, session.QuotaDate))
+                .ToArray();
+            await store.SaveAsync(state with { CompletedMatches = completedMatches }, cancellationToken);
+            return FreePlayCompletionStatus.Consumed;
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    private async ValueTask<FreePlayQuotaState> LoadObservedStateAsync(
+        CancellationToken cancellationToken)
+    {
+        var currentUtcDate = DateOnly.FromDateTime(clock.UtcNow.UtcDateTime);
+        var storedState = await store.LoadAsync(cancellationToken);
+        if (storedState is null)
+        {
+            var newState = new FreePlayQuotaState(currentUtcDate, []);
+            await store.SaveAsync(newState, cancellationToken);
+            return newState;
+        }
+
+        if (currentUtcDate <= storedState.LastObservedUtcDate)
+        {
+            return storedState;
+        }
+
+        var advancedState = storedState with { LastObservedUtcDate = currentUtcDate };
+        await store.SaveAsync(advancedState, cancellationToken);
+        return advancedState;
+    }
+
+    private FreePlayAvailability GetAvailability(FreePlayQuotaState state, DateOnly quotaDate)
+    {
+        var remainingPlays = Math.Max(0, dailyLimit - CountCompletedMatches(state, quotaDate));
+        return new FreePlayAvailability(quotaDate, remainingPlays);
+    }
+
+    private static int CountCompletedMatches(FreePlayQuotaState state, DateOnly quotaDate)
+    {
+        return state.CompletedMatches.Count(match => match.QuotaDate == quotaDate);
+    }
+}
