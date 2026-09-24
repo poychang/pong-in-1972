@@ -63,6 +63,7 @@
 
 ## 已完成
 
+- [x] 建立 repository 專用 `AGENTS.md`，固定架構、產品、驗證與 Git 工作流程。
 - [x] 建立 .NET solution、遊戲核心、WinUI 3 App 與 xUnit 測試專案。
 - [x] 實作 120 Hz 固定步進、11 分勝負、八段反射、回擊加速與失分重設。
 - [x] 實作本機雙人模式與具反應延遲的單人 AI。
