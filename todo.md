@@ -9,45 +9,65 @@
 
 ## 進行中
 
-- [ ] 安裝並驗證 Visual Studio Windows App SDK、MSIX Packaging 與 Windows SDK 工作負載。
+- [ ] 實作遊戲內暫停、繼續、返回主選單與放棄比賽流程。
+  - `Escape` 停止計時器並清除 held input。
+  - 繼續時重設 frame clock，再恢復目前比賽。
+  - 放棄比賽會捨棄 quota session，不扣除遊玩次數。
+  - 以 UI Automation 驗證暫停、繼續與放棄後額度不變。
 
 ## 待辦
 
-### MSIX 與 Microsoft Store 前置
+### 穩定性與生命週期
 
-- [ ] 將目前 unpackaged WinUI 3 App 轉為 Packaged MSIX 專案。
-- [ ] 建立正式 Package identity、圖示、啟動畫面與 zh-TW／en-US 資源。
-- [ ] 在 Partner Center 建立 App identity，並關聯本機封裝專案。
-- [ ] 建立 1 次與 10 次 Store-managed consumable 測試商品。
-
-### Store 購買與扣次
-
-- [ ] 定義 `IStoreGateway` 與 fake gateway，測試商品查詢、購買及餘額錯誤狀態。
-- [ ] 實作 `StoreContext` adapter，顯示 Store 回傳的商品名稱與 formatted price。
-- [ ] 實作購買防重入，以及取消、離線、未登入與伺服器錯誤介面。
-- [ ] 免費額度耗盡時，付費局開始前連線確認 Store 餘額。
-- [ ] 實作賽後 consumable fulfillment 與固定 tracking ID。
-- [ ] 實作 pending fulfillment journal、重啟恢復與冪等重試。
-- [ ] 透過 Partner Center private flight 驗證 1／10 次商品、跨裝置餘額與 Microsoft 禮品卡結帳。
+- [ ] 視窗失焦或最小化時進入同一套暫停狀態並清除按鍵；回到前景後由玩家主動繼續。
+- [ ] 限制為單一 App instance，或加入跨程序額度鎖定，避免多開程序重複取得免費額度。
+- [ ] 為額度 completed-match 歷史加入安全的保留與壓縮規則，不破壞跨午夜 session 與回撥保護。
+- [ ] 保存並還原視窗大小、位置與玩家明確選擇的顯示模式，並處理螢幕／DPI 改變。
 
 ### 遊戲與體驗
 
-- [ ] 加入自行合成的球拍、牆面與得分音效，以及靜音／音量設定。
+- [ ] 加入自行合成的球拍、牆面與得分音效；Core 只發出事件，App 負責播放。
+- [ ] 加入靜音／音量設定與本機保存。
 - [ ] 加入 AI 對手難易度設定，僅調整反應間隔、瞄準誤差等 controller 參數，不改變共用物理規則。
-- [ ] 保存並還原視窗大小、位置與玩家明確選擇的顯示模式。
 - [ ] 加入 Xbox 控制器支援與裝置拔除自動暫停。
-- [ ] 視窗失焦或最小化時自動暫停並清除按鍵狀態。
-- [ ] 加入遊戲內暫停、返回主選單與放棄比賽流程。
-- [ ] 完成鍵盤導覽、高對比與 Narrator 可讀性驗證。
+- [ ] 建立統一設定介面，整合音量、AI 難度、控制方式與顯示模式。
+- [ ] 完成主選單、暫停、設定與 Store 畫面的鍵盤導覽、高對比及 Narrator 驗收。
 - [ ] 量測可信的原機參考資料，更新 `Classic1972Rules` 與 golden regression tests。
 
-### 上架準備
+### MSIX 與 Microsoft Store 外部前置
 
+- [ ] 透過 Visual Studio Installer 安裝並驗證 Windows App SDK、MSIX Packaging 與 Windows SDK 工作負載。
+- [ ] 建立最小 Packaged WinUI 3 spike，驗證 .NET 10、Windows App SDK、x64 簽署、安裝與啟動。
+- [ ] 在 Partner Center 建立 App identity，取得 Publisher、Package identity 與 Store ID。
+- [ ] 建立 1 次與 10 次 Store-managed consumable 測試商品，確認 10 次商品可設定 10 units。
+
+### Packaged App 轉換
+
+- [ ] 將目前 unpackaged WinUI 3 App 轉為 Packaged MSIX，設定 Windows Desktop `MinVersion=10.0.19045.0`。
+- [ ] 關聯 Partner Center identity，加入正式圖示、啟動畫面與 zh-TW／en-US resources。
+- [ ] 驗證 packaged LocalState 分支、安裝、啟動、升級與解除安裝；移除不再需要的 unpackaged workaround。
+- [ ] 產生 Release x64 MSIX bundle，且不提交開發憑證或 AppPackages 產物。
+
+### Store 購買架構
+
+- [ ] 定義商品／餘額／購買／fulfillment 結果模型，以及 `IStoreGateway` 與 fake gateway。
+- [ ] 實作 `IPlayEntitlementService`／`MatchChargeCoordinator`，免費額度優先，免費耗盡才選擇付費商品來源。
+- [ ] 以 fake clock／gateway 測試免費與付費切換、餘額不足、取消、離線、重啟及重複 callback。
+- [ ] 實作 `StoreContext` adapter，顯示 Store 回傳的商品名稱與 formatted price。
+- [ ] 實作購買防重入及取消、離線、未登入、網路和伺服器錯誤介面；成功後重新查詢餘額，不自行加值。
+- [ ] 付費局開始前必須連線確認 Store 餘額，並將選中的 Store ID 寫入 match session。
+- [ ] 實作賽後 consumable fulfillment、固定 tracking ID 與 pending journal。
+- [ ] 啟動、回前景與恢復網路時，以同一 tracking ID 冪等重試 pending fulfillment。
+
+### Store 與發行驗收
+
+- [ ] 透過 Partner Center private flight 驗證 1／10 units、取消、重複購買、斷線恢復及跨裝置餘額。
+- [ ] 以可退款的小額真實交易驗證 Microsoft 帳戶禮品卡可由 Store checkout 使用；App 不接觸卡號。
 - [ ] 建立隱私權政策、支援頁、IARC 分級與非 Atari 官方產品聲明。
 - [ ] 製作 Store 圖示、螢幕截圖、商品文案及價格／市場設定。
-- [ ] 建立 Windows CI：Release build、tests 與 MSIX bundle artifact。
-- [ ] 在 Windows 10 22H2、Windows 11 與 100／150／200% DPI 執行驗收。
-- [ ] 執行 Windows App Certification Kit 與至少 2 小時 soak test。
+- [ ] 建立 Windows CI：restore、tests、Release x64 build 與 MSIX bundle artifact；簽署資訊只存於受保護 secrets。
+- [ ] 在 Windows 10 22H2、Windows 11 與 100／150／200% DPI 執行安裝、升級與操作驗收。
+- [ ] 執行 Windows App Certification Kit 與至少 2 小時 soak test，涵蓋連續賽局、暫停、視窗切換、音效與 fulfillment。
 
 ## 已完成
 
