@@ -61,6 +61,8 @@ dotnet build pong-in-1972.sln -c Release -p:Platform=x64
 
 - `todo.md` is the execution queue. Work on one item from `進行中` at a time unless the user reprioritizes it.
 - When an item is complete, run its validation, move it to `已完成`, remove stale or duplicate entries, and commit code, tests, docs, and `todo.md` together.
+- Before finishing an item, decide whether it produced a non-obvious, verified, reusable lesson. If so, update `docs/dev-knowledge.md` in the same commit. Do not add routine implementation notes or unverified guesses.
+- Keep `docs/dev-knowledge.md` curated: revise or remove entries when APIs, tooling, or project constraints make them obsolete.
 - Keep commits focused and use Conventional Commit-style messages such as `feat:`, `fix:`, `test:`, or `docs:`.
 - Do not commit `bin/`, `obj/`, `.vs/`, AppPackages, certificates, package caches, or secrets.
 - Do not amend, rebase, force-push, or push unless the user explicitly asks. Never revert unrelated user changes.

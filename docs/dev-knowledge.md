@@ -1,0 +1,44 @@
+# 開發知識紀錄
+
+這份文件只保留經實作或驗證確認、未來仍可能節省除錯時間的非顯然知識。它不是工作日誌，也不要求每個開發項目都新增內容。
+
+維護時：
+
+- 優先記錄觸發條件、實際症狀、根因、可靠做法與重新驗證時機。
+- 不收錄可直接從程式碼看出的實作細節、一次性命令輸出或未驗證猜測。
+- API、工具鏈或專案限制改變後，直接修正或刪除過時內容，不保留歷史包袱。
+- 規則來源與原機量測放在 `docs/game-reference.md`，待辦事項放在 `todo.md`。
+
+## WinUI 3 與 Windows App SDK
+
+### Unpackaged App 不可假設具有 package identity
+
+**已驗證環境：** Windows App SDK 2.5.1、unpackaged WinUI 3、2026-09-24。
+
+`Microsoft.Windows.Storage.ApplicationData.GetDefault()` 雖可編譯，但在目前沒有 package identity 的開發執行檔中，曾讓程序在建立視窗前退出。編譯成功不足以證明 LocalState API 可在該部署模式執行。
+
+目前做法位於 `LocalStateFreePlayQuotaStore`：先以 `GetCurrentPackageFullName` 判斷 package identity。Packaged App 使用 `ApplicationData.LocalPath`；unpackaged 開發版使用 `%LocalAppData%\Arcade1972`。完成 MSIX 轉換後，要重新驗證 packaged 分支並評估是否仍需 fallback。
+
+### WinUI 視窗驗證不要只依賴 Process.MainWindowHandle
+
+WinUI 3 程序可能已建立可見視窗，但 `Process.MainWindowHandle` 仍回傳 `0`。自動化啟動驗證應以 `EnumWindows` 搭配 PID 找 top-level HWND，或使用 UI Automation 尋找視窗與控制項。
+
+### 自訂標題列的子控制項需要 passthrough region
+
+`ExtendsContentIntoTitleBar` 與 `SetTitleBar` 會讓標題列區域由 non-client input 處理。畫面上可見的資訊或全螢幕按鈕不一定能收到滑鼠事件，必須透過 `InputNonClientPointerSource.SetRegionRects` 將控制項範圍設為 `Passthrough`。矩形座標須乘上 `XamlRoot.RasterizationScale`，並在標題列尺寸改變時重算。
+
+## 本機狀態持久化
+
+### 原子替換與損毀隔離
+
+額度狀態先寫到目標目錄內的唯一暫存檔，flush 後再以 overwrite move 取代正式檔；暫存檔必須與正式檔位於同一個 volume。失敗時清除暫存檔，避免把半寫入內容當成有效狀態。
+
+載入時除了捕捉 JSON 語法錯誤，也要驗證必要欄位與識別碼。損毀檔移到 `.corrupt` 後回傳空狀態，保留診斷證據。移動檔案前必須先釋放讀取 stream；否則 Windows 會因檔案仍被占用而讓 quarantine 失敗。
+
+## 每日免費額度
+
+### UTC 回撥與跨午夜比賽需要分開建模
+
+只保存「今日使用次數」無法同時處理時間回撥與跨午夜比賽。目前模型保存最後觀察到的最大 UTC 日期，裝置時間倒退時沿用該日期，不重新發放額度。
+
+開局時建立包含唯一 match ID 與開始日期的 session；比賽完成時才記錄消耗。如此中途離開不扣次、跨午夜仍歸屬開始日期，重複送出相同 session 也能以 match ID 保持冪等。
